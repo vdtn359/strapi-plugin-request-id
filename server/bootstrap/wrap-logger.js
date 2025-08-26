@@ -27,17 +27,24 @@ const wrapLogger = (strapi) => {
     const msgIdx = method === "log" ? 1 : 0;
 
     strapi.log[method] = function (...args) {
-      const correlationId = getService("request-id").getCorrelationId();
-      const requestId = getService("request-id").getRequestId();
+      try {
+        const correlationId = getService("request-id").getCorrelationId();
+        const requestId = getService("request-id").getRequestId();
 
-      if (args[msgIdx] instanceof Error) {
-        args[msgIdx] = args[msgIdx].stack;
+        if (args[msgIdx] instanceof Error) {
+          args[msgIdx] = args[msgIdx].stack;
+        }
+
+        return original.apply(strapi.log, [
+          ...args,
+          {
+            "x-request-id": requestId,
+            [CORRELATION_ID_LOG_KEY]: correlationId,
+          },
+        ]);
+      } catch (err) {
+        return original.apply(strapi.log, args);
       }
-
-      return original.apply(strapi.log, [
-        ...args,
-        { "x-request-id": requestId, [CORRELATION_ID_LOG_KEY]: correlationId },
-      ]);
     };
   }
 };
